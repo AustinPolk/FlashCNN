@@ -11,7 +11,6 @@ class AutoDecoder(nn.Module):
             nn.Linear(12, 24),
             nn.ReLU(),
             nn.Linear(24, num_latent_features)
-            nn.ReLU()
         )
         self.encoder = nn.Sequential(
             nn.Linear(num_latent_features, 24),
