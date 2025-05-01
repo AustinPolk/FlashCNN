@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from model import create_model
 import sys
 from argparse import ArgumentParser
+import pickle
 
 def create_tensors(historical_data: pd.DataFrame, normal_data: pd.DataFrame):
     date_lookup = {}
@@ -92,34 +93,31 @@ def create_features_datasets(tensors, date_lookup, backward_features, forward_fe
 if __name__ == '__main__':
 
     parser = ArgumentParser()
-    parser.add_argument("-p", "--parity", type=str, required = True, help = "parity")
-    # parser.add_argument("-f", "--forward", type=int, required = True, help = "hidden_dim")
-    # parser.add_argument("-b", "--backward", type=int, required = True, help = "num of epochs to train")
-    # parser.add_argument("-e", "--epochs", required = True, help = "path to training data")
-    # parser.add_argument("--val_data", required = True, help = "path to validation data")
-    # parser.add_argument("--test_data", default = "to fill", help = "path to test data")
-    # parser.add_argument('--do_train', action='store_true')
+    parser.add_argument("-p", "--parity", type=str, required=True, help = "parity")
+    parser.add_argument("-f", "--features", type=int, required=True, help = "backward feature count")
+    parser.add_argument("-b", "--batch_size", type=int, required=False, default=4, help = "batch size")
+    parser.add_argument("-e", "--epochs", type=int, required=False, default=1000, help = "training epochs")
+    parser.add_argument("-l", "--learning_rate", type=float, required=False, default=5e-4, help = "learning rate")
+    parser.add_argument("-k", "--kernel_size", type=int, required=False, default=5, help = "kernel size")
+    parser.add_argument("--historical_data", type=str, required=True, help = "historical data filepath")
+    parser.add_argument("--normals_data", type=str, required=True, help = "daily normals data filepath")
+    parser.add_argument("--validation_date", type=str, required=False, default="2007-01-01", help = "date which splits training and validation data")
     args = parser.parse_args()
-
-    parity = int(args.parity)
     
-    historical_data = r"data\grand_island_nwt.csv"
-    normals_data = r"data\grand_island_normals.csv"
-    
-    historical = pd.read_csv(historical_data)
-    normals = pd.read_csv(normals_data)
+    historical = pd.read_csv(args.historical_data)
+    normals = pd.read_csv(args.normals_data)
     normals.insert(0, 'DAY', normals.index)
     
     print('Creating tensors')
     t, dl = create_tensors(historical, normals)
     
     print('Creating feature datasets')
-    forward_features, backward_features = 0, 60
+    forward_features, backward_features = 0, args.features
     X, Y = create_features_datasets(t.float(), dl, backward_features, forward_features)
     
     start_train_date = '1984-01-01'
-    end_train_date = '2007-01-01' # not inclusive
-    start_val_date = '2007-01-01'
+    end_train_date = args.validation_date # not inclusive
+    start_val_date = args.validation_date
     end_val_date = '2012-01-01'   # not inclusive
     
     start_train_idx = dl[start_train_date]
@@ -127,23 +125,20 @@ if __name__ == '__main__':
     start_val_idx = dl[start_val_date]
     end_val_idx = dl[end_val_date]
     
-    #train_len = int(0.7 * X.size()[0])
     X_train, Y_train = X[start_train_idx:end_train_idx], Y[start_train_idx:end_train_idx]
     X_test, Y_test = X[start_val_idx:end_val_idx], Y[start_val_idx:end_val_idx]
     
     print('Creating data loader')
     dataset = Data.TensorDataset(X, Y)
-    
-    batch_size = 4
-    loader = Data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    loader = Data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
     
     print('Initializing model')
-    model = create_model(13, forward_features + backward_features, 4, 5)
+    model = create_model(t.size()[2], forward_features + backward_features, t.size()[0], args.kernel_size)
     loss_fn = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=5e-4)
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     
     print('Begin training')
-    n_epochs = 1000
+    n_epochs = args.epochs
     
     batch_training_losses = np.zeros(n_epochs)
     training_losses = np.zeros(n_epochs)
@@ -162,7 +157,7 @@ if __name__ == '__main__':
             loss.backward()
             optimizer.step()
             b += 1
-        training_losses[epoch] /= b
+        batch_training_losses[epoch] /= b
         
         # Validation
         model.eval()
@@ -180,9 +175,13 @@ if __name__ == '__main__':
         if test_rmse < best_test_rmse:
             best_test_rmse = test_rmse
             print("Checkpointing at epoch %d with test RMSE %.4f" % (epoch + 1, test_rmse))
-            save_path = os.path.join('models', f'model_p{parity}_f{forward_features}_b{backward_features}_e{epoch+1}.mdl')
+            save_path = os.path.join('models', f'model_p{args.parity}.mdl')
             torch.save(model.state_dict(), save_path)
 
+    save_path = os.path.join('models', f'loss_p{args.parity}.pkl')
+    with open(save_path, 'wb+') as save_file:
+        pickle.dump((batch_training_losses, training_losses, testing_losses), save_file)
+    
     plt.plot(range(len(training_losses)), training_losses)
     plt.plot(range(len(testing_losses)), testing_losses)
     plt.show()
