@@ -6,6 +6,8 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 from model import create_model
+import sys
+from argparse import ArgumentParser
 
 def create_tensors(historical_data: pd.DataFrame, normal_data: pd.DataFrame):
     date_lookup = {}
@@ -38,7 +40,7 @@ def get_historical_features(frm, tensors, date_lookup, input=False):
     if input:
         return tensors[:, from_idx, :]
     else:
-        return tensors[0, from_idx, :]
+        return tensors[0, from_idx, :6]
 
 def get_many_historical_features(frm, to, tensors, date_lookup, input=False):
     if isinstance(frm, str):
@@ -56,7 +58,7 @@ def get_many_historical_features(frm, to, tensors, date_lookup, input=False):
         if input:
             data.append(tensors[:, idx, :])
         else:
-            data.append(tensors[0, idx, :])
+            data.append(tensors[0, idx, :6])
 
     if input:
         return torch.stack(data, dim=1)
@@ -88,6 +90,18 @@ def create_features_datasets(tensors, date_lookup, backward_features, forward_fe
     return torch.stack(X, dim=0), torch.stack(Y, dim=0)
 
 if __name__ == '__main__':
+
+    parser = ArgumentParser()
+    parser.add_argument("-p", "--parity", type=str, required = True, help = "parity")
+    # parser.add_argument("-f", "--forward", type=int, required = True, help = "hidden_dim")
+    # parser.add_argument("-b", "--backward", type=int, required = True, help = "num of epochs to train")
+    # parser.add_argument("-e", "--epochs", required = True, help = "path to training data")
+    # parser.add_argument("--val_data", required = True, help = "path to validation data")
+    # parser.add_argument("--test_data", default = "to fill", help = "path to test data")
+    # parser.add_argument('--do_train', action='store_true')
+    args = parser.parse_args()
+
+    parity = int(args.parity)
     
     historical_data = r"data\grand_island_nwt.csv"
     normals_data = r"data\grand_island_normals.csv"
@@ -104,9 +118,9 @@ if __name__ == '__main__':
     X, Y = create_features_datasets(t.float(), dl, backward_features, forward_features)
     
     start_train_date = '1984-01-01'
-    end_train_date = '2005-01-01' # not inclusive
-    start_val_date = '2005-01-01'
-    end_val_date = '2011-01-01'   # not inclusive
+    end_train_date = '2007-01-01' # not inclusive
+    start_val_date = '2007-01-01'
+    end_val_date = '2012-01-01'   # not inclusive
     
     start_train_idx = dl[start_train_date]
     end_train_idx = dl[end_train_date]
@@ -126,7 +140,7 @@ if __name__ == '__main__':
     print('Initializing model')
     model = create_model(13, forward_features + backward_features, 4, 5)
     loss_fn = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=5e-4)
     
     print('Begin training')
     n_epochs = 1000
@@ -166,7 +180,7 @@ if __name__ == '__main__':
         if test_rmse < best_test_rmse:
             best_test_rmse = test_rmse
             print("Checkpointing at epoch %d with test RMSE %.4f" % (epoch + 1, test_rmse))
-            save_path = os.path.join('models', f'model_f{forward_features}_b{backward_features}_e{epoch+1}.mdl')
+            save_path = os.path.join('models', f'model_p{parity}_f{forward_features}_b{backward_features}_e{epoch+1}.mdl')
             torch.save(model.state_dict(), save_path)
 
     plt.plot(range(len(training_losses)), training_losses)

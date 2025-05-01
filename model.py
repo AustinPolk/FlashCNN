@@ -45,6 +45,6 @@ def create_model(num_features, sequence_len, channels, k):
     network.add_module('ReLU3', nn.ReLU())
     network.add_module('FC2', nn.Linear(512, 128))
     network.add_module('ReLU4', nn.ReLU())
-    network.add_module('FC3', nn.Linear(128, num_features))
+    network.add_module('FC3', nn.Linear(128, 6))
 
     return network
