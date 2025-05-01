@@ -2,10 +2,10 @@ import torch
 from torch import nn
 import numpy as np
 
-def create_model(num_features, sequence_len, channels, k):
+def create_model(num_in_features, num_out_features, sequence_len, channels, k):
     network = nn.Sequential()
 
-    c, h, w = channels, sequence_len, num_features
+    c, h, w = channels, sequence_len, num_in_features
     print(c, h, w)
     
     # first convolutional layer, followed by relu and maxpooling layers
@@ -45,6 +45,6 @@ def create_model(num_features, sequence_len, channels, k):
     network.add_module('ReLU3', nn.ReLU())
     network.add_module('FC2', nn.Linear(512, 128))
     network.add_module('ReLU4', nn.ReLU())
-    network.add_module('FC3', nn.Linear(128, 6))
+    network.add_module('FC3', nn.Linear(128, num_out_features))
 
     return network

@@ -33,7 +33,7 @@ def create_tensors(historical_data: pd.DataFrame, normal_data: pd.DataFrame):
 
     return torch.stack((h_tensors, n_tensors, d_tensors, s_tensors), dim=0), date_lookup
 
-def get_historical_features(frm, tensors, date_lookup, input=False):
+def get_historical_features(frm, tensors, date_lookup, out_features, input=False):
     if isinstance(frm, str):
         from_idx = date_lookup[frm]
     else:
@@ -41,9 +41,9 @@ def get_historical_features(frm, tensors, date_lookup, input=False):
     if input:
         return tensors[:, from_idx, :]
     else:
-        return tensors[0, from_idx, :6]
+        return tensors[0, from_idx, :out_features]
 
-def get_many_historical_features(frm, to, tensors, date_lookup, input=False):
+def get_many_historical_features(frm, to, tensors, date_lookup, out_features, input=False):
     if isinstance(frm, str):
         from_idx = date_lookup[frm]
     else:
@@ -59,14 +59,14 @@ def get_many_historical_features(frm, to, tensors, date_lookup, input=False):
         if input:
             data.append(tensors[:, idx, :])
         else:
-            data.append(tensors[0, idx, :6])
+            data.append(tensors[0, idx, :out_features])
 
     if input:
         return torch.stack(data, dim=1)
     else:
         return torch.stack(data, dim=0)
 
-def create_features_datasets(tensors, date_lookup, backward_features, forward_features):
+def create_features_datasets(tensors, date_lookup, backward_features, forward_features, out_features):
     first_idx = backward_features + 1
     last_idx = tensors.size()[1] - forward_features - 1
     
@@ -75,15 +75,15 @@ def create_features_datasets(tensors, date_lookup, backward_features, forward_fe
 
     for idx in range(first_idx, last_idx, 1):
         if backward_features > 0 and forward_features > 0:
-            backward = get_many_historical_features(idx - backward_features, idx - 1, tensors, date_lookup, input=True)
-            forward = get_many_historical_features(idx + 1, idx + forward_features, tensors, date_lookup, input=True)            
+            backward = get_many_historical_features(idx - backward_features, idx - 1, tensors, date_lookup, out_features, input=True)
+            forward = get_many_historical_features(idx + 1, idx + forward_features, tensors, date_lookup, out_features, input=True)            
             input_features = torch.concat((backward, forward), dim=1)
         elif backward_features > 0:
-            input_features = get_many_historical_features(idx - backward_features, idx - 1, tensors, date_lookup, input=True)
+            input_features = get_many_historical_features(idx - backward_features, idx - 1, tensors, date_lookup, out_features, input=True)
         elif forward_features > 0:
-            input_features = get_many_historical_features(idx + 1, idx + forward_features, tensors, date_lookup, input=True)            
+            input_features = get_many_historical_features(idx + 1, idx + forward_features, tensors, date_lookup, out_features, input=True)            
 
-        output_features = get_historical_features(idx, tensors, date_lookup, input=False)
+        output_features = get_historical_features(idx, tensors, date_lookup, out_features, input=False)
 
         X.append(input_features)
         Y.append(output_features)
@@ -94,7 +94,8 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument("-p", "--parity", type=str, required=True, help = "parity")
-    parser.add_argument("-f", "--features", type=int, required=True, help = "backward feature count")
+    parser.add_argument("-f", "--backward_features", type=int, required=True, help = "backward feature count")
+    parser.add_argument("-o", "--out_features", type=int, required=True, help = "out feature count")
     parser.add_argument("-b", "--batch_size", type=int, required=False, default=4, help = "batch size")
     parser.add_argument("-e", "--epochs", type=int, required=False, default=1000, help = "training epochs")
     parser.add_argument("-l", "--learning_rate", type=float, required=False, default=5e-4, help = "learning rate")
@@ -112,8 +113,8 @@ if __name__ == '__main__':
     t, dl = create_tensors(historical, normals)
     
     print('Creating feature datasets')
-    forward_features, backward_features = 0, args.features
-    X, Y = create_features_datasets(t.float(), dl, backward_features, forward_features)
+    forward_features, backward_features = 0, args.backward_features
+    X, Y = create_features_datasets(t.float(), dl, backward_features, forward_features, args.out_features)
     
     start_train_date = '1984-01-01'
     end_train_date = args.validation_date # not inclusive
@@ -133,7 +134,7 @@ if __name__ == '__main__':
     loader = Data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
     
     print('Initializing model')
-    model = create_model(t.size()[2], forward_features + backward_features, t.size()[0], args.kernel_size)
+    model = create_model(t.size()[2], args.out_features, forward_features + backward_features, t.size()[0], args.kernel_size)
     loss_fn = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     
