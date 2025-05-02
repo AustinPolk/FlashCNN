@@ -9,7 +9,7 @@ def create_model(num_in_features, num_out_features, sequence_len, channels, k):
     print(c, h, w)
     
     # first convolutional layer, followed by relu and maxpooling layers
-    network.add_module('Conv1', nn.Conv2d(in_channels=channels, out_channels=4*channels, kernel_size=(1, num_features)))
+    network.add_module('Conv1', nn.Conv2d(in_channels=channels, out_channels=4*channels, kernel_size=(1, num_in_features)))
     c, h, w = 4*c, h, 1
     print(c, h, w)
 

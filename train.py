@@ -102,12 +102,16 @@ if __name__ == '__main__':
     parser.add_argument("-k", "--kernel_size", type=int, required=False, default=5, help = "kernel size")
     parser.add_argument("--historical_data", type=str, required=True, help = "historical data filepath")
     parser.add_argument("--normals_data", type=str, required=True, help = "daily normals data filepath")
-    parser.add_argument("--validation_date", type=str, required=False, default="2007-01-01", help = "date which splits training and validation data")
+    parser.add_argument("--start_date", type=str, required=True, help = "start date for training data")
+    parser.add_argument("--validation_date", type=str, required=True, help = "date which splits training and validation data")
     args = parser.parse_args()
     
     historical = pd.read_csv(args.historical_data)
     normals = pd.read_csv(args.normals_data)
-    normals.insert(0, 'DAY', normals.index)
+    try:
+        normals.insert(0, 'DAY', normals.index)
+    except:
+        pass
     
     print('Creating tensors')
     t, dl = create_tensors(historical, normals)
@@ -116,7 +120,7 @@ if __name__ == '__main__':
     forward_features, backward_features = 0, args.backward_features
     X, Y = create_features_datasets(t.float(), dl, backward_features, forward_features, args.out_features)
     
-    start_train_date = '1984-01-01'
+    start_train_date = args.start_date
     end_train_date = args.validation_date # not inclusive
     start_val_date = args.validation_date
     end_val_date = '2012-01-01'   # not inclusive
