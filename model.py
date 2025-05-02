@@ -3,7 +3,7 @@ from torch import nn
 import numpy as np
 
 class FlashModel(nn.Module):
-    def __init__(self, input_shape, output_shape, stations, k=5, dropout=0.2):
+    def __init__(self, input_shape, output_shape, stations, k=5, dropout=0.2, sigmoid_output=False):
         super(FlashModel, self).__init__()
         
         self.channels = input_shape[0]
@@ -13,6 +13,7 @@ class FlashModel(nn.Module):
         self.kernel_size = k
         self.dropout_rate = dropout
         self.stations = stations
+        self.sigmoid_output = sigmoid_output
         self.network = self._create_network()
 
     def _create_network(self):
@@ -58,6 +59,9 @@ class FlashModel(nn.Module):
         network.add_module('FC2', nn.Linear(512, 128))
         network.add_module('ReLU4', nn.ReLU())
         network.add_module('FC3', nn.Linear(128, self.output_features))
+
+        if self.sigmoid_output:
+            network.add_module('Sigmoid1', nn.Sigmoid())
     
         return network
     def forward(self, x):
