@@ -87,9 +87,9 @@ if __name__ == '__main__':
     new_column_order = []
     for station in stations:
         if bool(args.storm_mode):
-            new_column_order += [f'PRCP_{station}', f'TMAX_{station}', f'TMIN_{station}', f'AWND_{station}', f'UWSF12_{station}', f'VWSF12_{station}']
-        else:
             new_column_order += [f'STORM_{station}', f'TMAX_{station}', f'TMIN_{station}', f'AWND_{station}', f'UWSF12_{station}', f'VWSF12_{station}']
+        else:
+            new_column_order += [f'PRCP_{station}', f'TMAX_{station}', f'TMIN_{station}', f'AWND_{station}', f'UWSF12_{station}', f'VWSF12_{station}']
     for station in stations:
         new_column_order += [f'WSF12_{station}', f'WDF12_{station}', f'UWDF12_{station}', f'VWDF12_{station}', f'TAVG_{station}', f'TSPREAD_{station}', f'WSPREAD_{station}']
     df = df[new_column_order]

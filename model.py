@@ -14,6 +14,7 @@ class FlashModel(nn.Module):
         self.dropout_rate = dropout
         self.stations = stations
         self.sigmoid_output = sigmoid_output
+        self.variables_per_station = 6
         self.network = self._create_network()
 
     def _create_network(self):
@@ -46,7 +47,6 @@ class FlashModel(nn.Module):
         h = h / 2
         print(c, h, w)
         
-        
         # then flatten everything into a single dimension and apply dropout
         network.add_module('Flatten', nn.Flatten())
         print(c * h * w)
@@ -59,10 +59,16 @@ class FlashModel(nn.Module):
         network.add_module('FC2', nn.Linear(512, 128))
         network.add_module('ReLU4', nn.ReLU())
         network.add_module('FC3', nn.Linear(128, self.output_features))
-
-        if self.sigmoid_output:
-            network.add_module('Sigmoid1', nn.Sigmoid())
     
         return network
     def forward(self, x):
-        return self.network(x)
+        y = self.network(x)
+
+        # apply sigmoid function to first variable for each station
+        if self.sigmoid_output:
+            for station_idx in range(self.stations):
+                target_idx = self.variables_per_station * station_idx
+                y[-1, target_idx] = torch.sigmoid(y[-1, target_idx])
+
+        return y
+                
