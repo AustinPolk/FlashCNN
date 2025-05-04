@@ -141,7 +141,7 @@ if __name__ == '__main__':
     loader = Data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
     
     print('Initializing model')
-    model = FlashModel(input_shape=(t.size()[0], forward_features + backward_features, t.size()[2]), output_shape=(args.out_features,), stations=args.stations, k=args.kernel_size, dropout=args.dropout_rate, bool(args.storm_mode))
+    model = FlashModel(input_shape=(t.size()[0], forward_features + backward_features, t.size()[2]), output_shape=(args.out_features,), stations=args.stations, k=args.kernel_size, dropout=args.dropout_rate, sigmoid_output=bool(args.storm_mode))
     loss_fn = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     
