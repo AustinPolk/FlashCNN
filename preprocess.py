@@ -75,7 +75,7 @@ if __name__ == '__main__':
     
     for station in stations:
         df[f'WSF12_{station}'] = df[f'WSF1_{station}'] + df[f'WSF2_{station}']
-        df[f'WDF12_{station}'] = np.pi * (df[f'WDF1_{station}'] + df[f'WDF2_{station}']) / 2
+        df[f'WDF12_{station}'] = np.pi * (df[f'WDF1_{station}'] + df[f'WDF2_{station}']) / 180.0
         df[f'UWSF12_{station}'] = df[f'WSF12_{station}'] * np.cos(df[f'WDF12_{station}'])
         df[f'VWSF12_{station}'] = df[f'WSF12_{station}'] * np.sin(df[f'WDF12_{station}'])
         df[f'UWDF12_{station}'] = np.cos(df[f'WDF12_{station}']).pow(2)
