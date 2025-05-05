@@ -22,19 +22,21 @@ if __name__ == '__main__':
     stations = df['STATION'].unique()
     
     print(stations)
+
+    df['PRCP'] *= 100.0
     
     df = df[['STATION', 'PRCP', 'TMAX', 'TMIN', 'AWND', 'WDF1', 'WDF2', 'WSF1', 'WSF2']]
     df = df.pivot(columns='STATION', values=['PRCP', 'TMAX', 'TMIN', 'AWND', 'WDF1', 'WDF2', 'WSF1', 'WSF2'])
     df = df.loc['1984-01-01':'2024-12-31']
     df.columns = ['_'.join(col) for col in df.columns]
-
+    
     if args.storm_mode:
         all_storms = []
         for station in stations:
             prcp_col = f'PRCP_{station}'
             storm_col = f'STORM_{station}'
             
-            df[storm_col] = df[prcp_col].apply(lambda x: 1 if x > 0 else 0)
+            df[storm_col] = df[prcp_col].apply(lambda x: 100.0 if x > 0 else 0.0)
             
             PRCPs = df[prcp_col].values
             storms = []

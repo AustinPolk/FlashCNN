@@ -34,7 +34,7 @@ class FlashModel(nn.Module):
         
         network.add_module('ReLU1', nn.ReLU())
         network.add_module('MaxPool1', nn.MaxPool2d(kernel_size=(2,1), stride=2))
-        h = h / 2
+        h = h // 2
         print(c, h, w)
         
         # next layer, same thing.
@@ -44,7 +44,7 @@ class FlashModel(nn.Module):
         
         network.add_module('ReLU2', nn.ReLU())
         network.add_module('MaxPool2', nn.MaxPool2d(kernel_size=(2,1), stride=2))
-        h = h / 2
+        h = h // 2
         print(c, h, w)
         
         # then flatten everything into a single dimension and apply dropout
@@ -64,11 +64,11 @@ class FlashModel(nn.Module):
     def forward(self, x):
         y = self.network(x)
 
-        # apply sigmoid function to first variable for each station
+        # apply sigmoid function to first variable for each station, multiplied by 100 to be on the scale of everything else
         if self.sigmoid_output:
             for station_idx in range(self.stations):
                 target_idx = self.variables_per_station * station_idx
-                y[-1, target_idx] = torch.sigmoid(y[-1, target_idx])
+                y[-1, target_idx] = 100.0 * torch.sigmoid(y[-1, target_idx])
 
         return y
                 

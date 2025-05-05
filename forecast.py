@@ -90,7 +90,7 @@ def normal_clamp_forecast(forecast_tensor, normals, num_stations, storm_mode):
         VWSF12_normal = float(normals[tensor_idx('VWSF12', station_idx)])
 
         if storm_mode:
-            STORM = 1 if STORM > 0.5 else 0
+            STORM = 100.0 if STORM > 50.0 else 0.0
         else:
             PRCP = clamp(PRCP, 0, 100 * PRCP_normal)
             
