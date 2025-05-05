@@ -66,7 +66,7 @@ def display_forecast(forecast_tensor, forecast_date, station_idx, storm_mode):
     print(f'Northward wind gust speed: {VWSF12} mph')
     print('======================================')
 
-def normal_clamp_forecast(forecast_tensor, normals, num_stations, storm_mode):
+def normal_clamp_forecast(forecast_tensor, max_normals, min_normals, num_stations, storm_mode):
     clamp = lambda x, min_val, max_val: min(max_val, max(x, min_val))
     clamped_forecast = torch.zeros_like(forecast_tensor)
     
@@ -83,23 +83,31 @@ def normal_clamp_forecast(forecast_tensor, normals, num_stations, storm_mode):
         VWSF12 = float(forecast_tensor[tensor_idx('VWSF12', station_idx)])
 
         if not storm_mode:
-            PRCP_normal = float(normals[tensor_idx('PRCP', station_idx)])
-        TMAX_normal = float(normals[tensor_idx('TMAX', station_idx)])
-        TMIN_normal = float(normals[tensor_idx('TMIN', station_idx)])
-        AWND_normal = float(normals[tensor_idx('AWND', station_idx)])
-        UWSF12_normal = float(normals[tensor_idx('UWSF12', station_idx)])
-        VWSF12_normal = float(normals[tensor_idx('VWSF12', station_idx)])
+            PRCP_max = float(max_normals[tensor_idx('PRCP', station_idx)])
+        TMAX_max = float(max_normals[tensor_idx('TMAX', station_idx)])
+        TMIN_max = float(max_normals[tensor_idx('TMIN', station_idx)])
+        AWND_max = float(max_normals[tensor_idx('AWND', station_idx)])
+        UWSF12_max = float(max_normals[tensor_idx('UWSF12', station_idx)])
+        VWSF12_max = float(max_normals[tensor_idx('VWSF12', station_idx)])
+
+        if not storm_mode:
+            PRCP_min = float(min_normals[tensor_idx('PRCP', station_idx)])
+        TMAX_min = float(min_normals[tensor_idx('TMAX', station_idx)])
+        TMIN_min = float(min_normals[tensor_idx('TMIN', station_idx)])
+        AWND_min = float(min_normals[tensor_idx('AWND', station_idx)])
+        UWSF12_min = float(min_normals[tensor_idx('UWSF12', station_idx)])
+        VWSF12_min = float(min_normals[tensor_idx('VWSF12', station_idx)])
 
         if storm_mode:
             STORM = 100.0 if STORM > 50.0 else 0.0
         else:
-            PRCP = clamp(PRCP, 0, 100 * PRCP_normal)
+            PRCP = clamp(PRCP, PRCP_min, PRCP_max)
             
-        TMAX = clamp(TMAX, TMIN + 1, 2 * abs(TMAX_normal))
-        TMIN = clamp(TMIN, -2 * abs(TMIN_normal), TMAX - 1)
-        AWND = clamp(AWND, 0, 4 * AWND_normal)
-        UWSF12 = clamp(UWSF12, -4 * abs(UWSF12), 4 * abs(UWSF12))
-        VWSF12 = clamp(VWSF12, -4 * abs(VWSF12), 4 * abs(VWSF12))
+        TMAX = clamp(TMAX, TMAX_min, TMAX_max)
+        TMIN = clamp(TMIN, TMIN_min, min(TMIN_max, TMAX - 1)) # don't allow min temp to become larger than max temp
+        AWND = clamp(AWND, AWND_min, AWND_max)
+        UWSF12 = clamp(UWSF12, UWSF12_min, UWSF12_max)
+        VWSF12 = clamp(VWSF12, VWSF12_min, VWSF12_max)
 
         if storm_mode:
             clamped_forecast[tensor_idx('STORM', station_idx)] = STORM
@@ -125,7 +133,10 @@ def create_derived_values_from_forecast(forecast_tensor, forecast_date, num_stat
         UWSF12 = float(forecast_tensor[tensor_idx('UWSF12', station_idx)])
         VWSF12 = float(forecast_tensor[tensor_idx('VWSF12', station_idx)])
 
-        WDF12 = np.arctan(VWSF12 / UWSF12)
+        if abs(UWSF12) > 0.05:
+            WDF12 = np.arctan(VWSF12 / UWSF12)
+        else:
+            WDF12 = np.arctan(VWSF12 / 0.05)
         WSF12 = UWSF12 / np.cos(WDF12)
         UWDF12 = np.cos(WDF12) * np.cos(WDF12)
         VWDF12 = np.sin(WDF12) * np.sin(WDF12)
@@ -150,10 +161,14 @@ def create_derived_values_from_forecast(forecast_tensor, forecast_date, num_stat
 
 def fetch_normals_for_date(normals, forecast_date):
     mean_columns = [x for x in normals.columns if 'mean' in x]
+    max_columns = [x for x in normals.columns if 'max' in x]
+    min_columns = [x for x in normals.columns if 'min' in x]
     day = forecast_date.day_of_year
     day = day if day < 366 else 1
     means = normals[mean_columns].loc[day]
-    return torch.from_numpy(means.values)
+    maxes = normals[max_columns].loc[day]
+    mins = normals[min_columns].loc[day]
+    return torch.from_numpy(means.values), torch.from_numpy(maxes.values), torch.from_numpy(mins.values)
 
 def create_forecast(model, historical, normals, forecast_start, forecast_length, storm_mode):
     t, dl = create_tensors(historical, normals)
@@ -173,10 +188,10 @@ def create_forecast(model, historical, normals, forecast_start, forecast_length,
         current_date = start_date + pd.Timedelta(days=i)
         prediction = model(current_lookback.unsqueeze(0))[0]
         
-        daily_means = fetch_normals_for_date(normals, current_date)
+        daily_means, daily_maxes, daily_mins = fetch_normals_for_date(normals, current_date)
         forecast_period_normals.append(daily_means)
         
-        clamped_prediction = normal_clamp_forecast(prediction, daily_means, model.stations, storm_mode)
+        clamped_prediction = normal_clamp_forecast(prediction, daily_maxes, daily_mins, model.stations, storm_mode)
         forecast.append(clamped_prediction)
         
         extended_prediction = create_derived_values_from_forecast(clamped_prediction, current_date, model.stations, current_lookback.size()[2])

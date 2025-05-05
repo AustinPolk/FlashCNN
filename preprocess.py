@@ -106,6 +106,6 @@ if __name__ == '__main__':
     
     limited = df.loc[:'2000-01-01']
     
-    normals = limited.groupby('DAY').agg(['mean', 'std'])
+    normals = limited.groupby('DAY').agg(['mean', 'std', 'max', 'min'])
     normals.columns = ['_'.join(col) for col in normals.columns]
     normals.to_csv(args.normal_path)
