@@ -154,17 +154,17 @@ if __name__ == '__main__':
         print(f'Resuming training using model located at {args.resume_from}')
         with open(args.resume_from, 'rb') as model_file:
             model = pickle.load(model_file)
-
-        model.eval()
-        with torch.no_grad():
-            Y_pred = model(X_test)
-            test_rmse = np.sqrt(loss_fn(Y_pred, Y_test).cpu())
-            print(f'Current model test RMSE: {test_rmse}')
             
     loss_fn = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
     model.to(device)
+
+    model.eval()
+    with torch.no_grad():
+        Y_pred = model(X_test)
+        test_rmse = np.sqrt(loss_fn(Y_pred, Y_test).cpu())
+        print(f'Current model test RMSE: {test_rmse}')
     
     print('Begin training')
     n_epochs = args.epochs
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     training_losses = np.zeros(n_epochs)
     testing_losses = np.zeros(n_epochs)
     
-    best_test_rmse = 1_000_000
+    best_test_rmse = test_rmse
     
     for epoch in range(n_epochs):
         model.train()
