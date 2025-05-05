@@ -5,6 +5,7 @@ import torch
 import numpy as np
 from argparse import ArgumentParser
 import pandas as pd
+import os
 
 def tensor_idx(variable_name, station_idx):
     match variable_name:
@@ -165,6 +166,7 @@ def create_forecast(model, historical, normals, forecast_start, forecast_length,
     #print(current_lookback.size())
     
     forecast = []
+    forecast_period_normals = []
 
     start_date = pd.to_datetime(forecast_start)
     for i in range(forecast_length):
@@ -172,6 +174,8 @@ def create_forecast(model, historical, normals, forecast_start, forecast_length,
         prediction = model(current_lookback.unsqueeze(0))[0]
         
         daily_means = fetch_normals_for_date(normals, current_date)
+        forecast_period_normals.append(daily_means)
+        
         clamped_prediction = normal_clamp_forecast(prediction, daily_means, model.stations, storm_mode)
         forecast.append(clamped_prediction)
         
@@ -186,7 +190,7 @@ def create_forecast(model, historical, normals, forecast_start, forecast_length,
 
         current_lookback = torch.concat((current_lookback[:, 1:], features.float()), dim=1)
 
-    return torch.stack(forecast, dim=0)
+    return torch.stack(forecast, dim=0), torch.stack(forecast_period_normals, dim=0)
 
 def get_forecasted_period_from_historical(model, historical, normals, forecast_start, forecast_length):
     t, dl = create_tensors(historical, normals)
@@ -222,11 +226,12 @@ if __name__ == '__main__':
     normals.index = normals['DAY'].values
     
     days = 7 * args.weeks
-    forecast = create_forecast(model, historical, normals, args.start_date, days, args.storm_mode)
+    forecast, forecast_period_normals = create_forecast(model, historical, normals, args.start_date, days, args.storm_mode)
     actual_observations = get_forecasted_period_from_historical(model, historical, normals, args.start_date, days)
 
     if args.condense:
         condensed_station_forecasts = []
+        condensed_station_normals = []
         condensed_station_observations = []
         
         for station_idx in range(model.stations):
@@ -241,6 +246,16 @@ if __name__ == '__main__':
             condensed_station_forecast = torch.stack((STORM if args.storm_mode else PRCP, TAVG, AWND), dim=1)
             condensed_station_forecasts.append(condensed_station_forecast)
 
+            STORM = forecast_period_normals[:, tensor_idx('STORM', station_idx)]
+            PRCP = forecast_period_normals[:, tensor_idx('PRCP', station_idx)]
+            TMAX = forecast_period_normals[:, tensor_idx('TMAX', station_idx)]
+            TMIN = forecast_period_normals[:, tensor_idx('TMIN', station_idx)]
+            TAVG = (TMAX + TMIN) / 2
+            AWND = forecast_period_normals[:, tensor_idx('AWND', station_idx)]
+            
+            condensed_station_normal = torch.stack((STORM if args.storm_mode else PRCP, TAVG, AWND), dim=1)
+            condensed_station_normals.append(condensed_station_normal)
+
             STORM = actual_observations[:, tensor_idx('STORM', station_idx)]
             PRCP = actual_observations[:, tensor_idx('PRCP', station_idx)]
             TMAX = actual_observations[:, tensor_idx('TMAX', station_idx)]
@@ -253,6 +268,7 @@ if __name__ == '__main__':
 
         forecast = torch.cat(condensed_station_forecasts, dim=1)
         actual_observations = torch.cat(condensed_station_observations, dim=1)
+        forecast_period_normals = torch.cat(condensed_station_normals, dim=1)
         
         columns = []
         for station_idx in range(model.stations):
@@ -279,5 +295,14 @@ if __name__ == '__main__':
     observations_df.insert(0, 'DAY', observations_df.index)
     observations_df.insert(0, 'DATE', pd.date_range(start=args.start_date, periods=len(observations_df), freq='D'))
 
+    normals_df = pd.DataFrame(forecast_period_normals.numpy())
+    normals_df = normals_df[normals_df.columns[:len(observations_df.columns)]]
+    normals_df.columns = columns
+    normals_df.insert(0, 'DAY', normals_df.index)
+    normals_df.insert(0, 'DATE', pd.date_range(start=args.start_date, periods=len(normals_df), freq='D'))
+    
     forecast_df.to_csv(args.forecast_path, index=False)
     observations_df.to_csv(args.observations_path, index=False)      
+
+    forecast_dir = os.path.dirname(args.forecast_path)
+    normals_df.to_csv(os.path.join(forecast_dir, 'forecast_normals.csv'), index=False)
