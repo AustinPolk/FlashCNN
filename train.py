@@ -102,7 +102,7 @@ if __name__ == '__main__':
     parser.add_argument("-k", "--kernel_size", type=int, required=False, default=5, help = "kernel size")
     parser.add_argument("-d", "--dropout_rate", type=float, required=False, default=0.2, help = "dropout rate")
     parser.add_argument("-s", "--stations", type=int, required=True, help = "station count")
-    parser.add_argument("--storm_mode", type=int, required=False, default=0, help = "train for storm detection")
+    parser.add_argument("--storm_mode", action='store_true', help = "train for storm detection")
     parser.add_argument("--historical_data", type=str, required=True, help = "historical data filepath")
     parser.add_argument("--normals_data", type=str, required=True, help = "daily normals data filepath")
     parser.add_argument("--start_date", type=str, required=True, help = "start date for training data")
@@ -141,7 +141,7 @@ if __name__ == '__main__':
     loader = Data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
     
     print('Initializing model')
-    model = FlashModel(input_shape=(t.size()[0], forward_features + backward_features, t.size()[2]), output_shape=(args.out_features,), stations=args.stations, k=args.kernel_size, dropout=args.dropout_rate, sigmoid_output=bool(args.storm_mode))
+    model = FlashModel(input_shape=(t.size()[0], forward_features + backward_features, t.size()[2]), output_shape=(args.out_features,), stations=args.stations, k=args.kernel_size, dropout=args.dropout_rate, sigmoid_output=args.storm_mode)
     loss_fn = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     

@@ -8,7 +8,7 @@ if __name__ == '__main__':
     parser.add_argument("--raw_path", type=str, required=True, help = "raw data filepath")
     parser.add_argument("--out_path", type=str, required=True, help = "output features filepath")
     parser.add_argument("--normal_path", type=str, required=True, help = "normals filepath")
-    parser.add_argument("--storm_mode", type=int, required=False, default=0, help = "normals filepath")
+    parser.add_argument("--storm_mode", action='store_true', help = "normals filepath")
     parser.add_argument("--stats_path", type=str, required=False, default='storm_statistics.csv', help = "storm statistics filepath")
     args = parser.parse_args()
     
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     df = df.loc['1984-01-01':'2024-12-31']
     df.columns = ['_'.join(col) for col in df.columns]
 
-    if bool(args.storm_mode):
+    if args.storm_mode:
         all_storms = []
         for station in stations:
             prcp_col = f'PRCP_{station}'
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     
     new_column_order = []
     for station in stations:
-        if bool(args.storm_mode):
+        if args.storm_mode:
             new_column_order += [f'STORM_{station}', f'TMAX_{station}', f'TMIN_{station}', f'AWND_{station}', f'UWSF12_{station}', f'VWSF12_{station}']
         else:
             new_column_order += [f'PRCP_{station}', f'TMAX_{station}', f'TMIN_{station}', f'AWND_{station}', f'UWSF12_{station}', f'VWSF12_{station}']
