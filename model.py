@@ -15,8 +15,28 @@ class FlashModel(nn.Module):
         self.stations = stations
         self.sigmoid_output = sigmoid_output
         self.variables_per_station = 6
+        self._check_viability()
         self.network = self._create_network()
 
+    def _check_viability(self):
+        c, h, w = self.channels, self.sequence_length, self.input_features
+        print(c, h, w)
+        c, h, w = 4*c, h, 1
+        print(c, h, w)
+        c, h = 2*c, h - self.kernel_size + 1
+        print(c, h, w)
+        h = h / 2
+        print(c, h, w)
+        c, h = 2*c, h - self.kernel_size + 1
+        print(c, h, w)
+        h = h / 2
+        print(c, h, w)
+        t = c * h * w
+        print(t)
+
+        if not t.is_integer():
+            raise Exception("Invalid CNN Config")
+    
     def _create_network(self):
         network = nn.Sequential()
     
