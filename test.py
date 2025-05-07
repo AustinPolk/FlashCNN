@@ -19,15 +19,17 @@ def get_above_average_days(predicted, actual, normal):
 
     return predicted_above, actual_above
 
-def get_total_rainfall(predicted, actual, normal):
+def get_variable_totals(predicted, actual, normal):
     return sum(predicted.values), sum(actual.values), sum(normal.values)
 
-def assess_risk(high_temp_days, high_wind_days, total_days, total_rainfall, normal_rainfall):
+def assess_risk(total_degrees, normal_degrees, total_winds, normal_winds, total_rainfall, normal_rainfall):
     risk_score = 0
 
-    risk_score += high_temp_days / total_days
-    risk_score += high_wind_days / total_days
-    risk_score -= total_rainfall / normal_rainfall # rain offsets the previous two risks
+    # heat and wind increase the risk
+    risk_score += (total_degrees / normal_degrees + total_winds / normal_winds) / 2
+    
+    # rain decreases the risk
+    risk_score -= total_rainfall / normal_rainfall
 
     return risk_score
 
@@ -59,12 +61,13 @@ def period_by_period_risk(predicted, actual, normal, station, periods=1, risk_la
         period_predicted = predicted.iloc[period_begin:period_end]
         period_actual = actual.iloc[period_begin:period_end]
 
-        predicted_high_temps, actual_high_temps = get_above_average_days(predicted[f'TAVG_{station}'], actual[f'TAVG_{station}'], normal[f'TAVG_{station}'])
-        predicted_high_winds, actual_high_winds = get_above_average_days(predicted[f'AWND_{station}'], actual[f'AWND_{station}'], normal[f'AWND_{station}'])
-        predicted_rainfall, actual_rainfall, normal_rainfall = get_total_rainfall(predicted[f'PRCP_{station}'], actual[f'PRCP_{station}'], normal[f'PRCP_{station}'])
+        # take sums of all variables to compare them to the normals
+        predicted_degrees, actual_degrees, normal_degrees = get_variable_totals(predicted[f'PRCP_{station}'], actual[f'PRCP_{station}'], normal[f'PRCP_{station}'])
+        predicted_winds, actual_winds, normal_winds = get_variable_totals(predicted[f'PRCP_{station}'], actual[f'PRCP_{station}'], normal[f'PRCP_{station}'])
+        predicted_rainfall, actual_rainfall, normal_rainfall = get_variable_totals(predicted[f'PRCP_{station}'], actual[f'PRCP_{station}'], normal[f'PRCP_{station}'])
 
-        predicted_risk_score = assess_risk(sum(predicted_high_temps), sum(predicted_high_winds), len(predicted_high_temps), predicted_rainfall, normal_rainfall)
-        actual_risk_score = assess_risk(sum(actual_high_temps), sum(actual_high_winds), len(actual_high_temps), actual_rainfall, normal_rainfall)
+        predicted_risk_score = assess_risk(predicted_degrees, normal_degrees, predicted_winds, normal_winds, predicted_rainfall, normal_rainfall)
+        actual_risk_score = assess_risk(actual_degrees, normal_degrees, actual_winds, normal_winds, actual_rainfall, normal_rainfall)
 
         if risk_labels == 3:
             predicted_risk_label = categorize_risk3(predicted_risk_score)
