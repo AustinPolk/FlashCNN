@@ -128,32 +128,37 @@ def calculate_risk2_stats(predicted, actual):
     actual_high_risk = [1 if x == 'High' else 0 for x in actual]
     return calculate_stats(predicted_high_risk, actual_high_risk)
     
-def display_7day_sma(predicted, actual, normal, up_to=500):
-    variable = 'TAVG'
+def display_variable_sma(predicted, actual, normal, variable, ax, up_to=500, window=1):
     station = 0
     
     predicted_tavg = predicted[f'{variable}_{station}'].iloc[:up_to]
     actual_tavg = actual[f'{variable}_{station}'].iloc[:up_to]
     normal_tavg = normal[f'{variable}_{station}'].iloc[:up_to]
     
-    window = 7
     pma = predicted_tavg.rolling(window=window).mean()
     ama = actual_tavg.rolling(window=window).mean()
     nma = normal_tavg.rolling(window=window).mean()
 
     print('Correlation:', actual_tavg.corr(predicted_tavg))
-    print('7-Day SMA Correlation:', ama.corr(pma))
+    print(f'{window}-Day SMA Correlation:', ama.corr(pma))
     
-    plt.plot(range(len(predicted_tavg)), pma, label='Predicted')
-    plt.plot(range(len(predicted_tavg)), ama, label='Actual')
-    plt.plot(range(len(predicted_tavg)), nma, label='Daily Normal')
+    ax.plot(range(len(predicted_tavg)), pma, label='Predicted')
+    ax.plot(range(len(predicted_tavg)), ama, label='Actual')
+    ax.plot(range(len(predicted_tavg)), nma, label='Daily Normal')
     
     plt.xlabel('Days Since Forecast Began')
-    plt.ylabel('Average Daily Temperature (deg F)')
-    plt.title('7-day SMA of Average Daily Temperature')
-    plt.legend()
+    if variable == 'TAVG':
+        #ax.set_ylabel('Average Daily Temperature (deg F)')
+        ax.set_title(f'{window}-Day SMA of Average Daily Temperature')
+    elif variable == 'PRCP':
+        #ax.set_ylabel('Total Daily Precipitation (hundredths in.)')
+        ax.set_title(f'{window}-Day SMA of Total Daily Precipitation')
+    elif variable == 'AWND':
+        #ax.set_ylabel('Average Daily Wind Speed (mph)')
+        ax.set_title(f'{window}-Day SMA of Average Daily Wind Speed')
+    ax.legend()
     
-    plt.show()
+    #plt.show()
     
 if __name__ == '__main__':
 
@@ -167,7 +172,20 @@ if __name__ == '__main__':
     actual = pd.read_csv(args.actual)
     normal = pd.read_csv(args.normal)
 
-    display_7day_sma(predicted, actual, normal, up_to=100)
+    fig, axes = plt.subplots(2, 3, figsize=(9, 6))
+    
+    limit = 500
+    display_variable_sma(predicted, actual, normal, 'TAVG', axes[0, 0], up_to=limit)
+    display_variable_sma(predicted, actual, normal, 'TAVG', axes[1, 0], window=7, up_to=limit)
+
+    display_variable_sma(predicted, actual, normal, 'PRCP', axes[0, 1], up_to=limit)
+    display_variable_sma(predicted, actual, normal, 'PRCP', axes[1, 1], window=7, up_to=limit)
+
+    display_variable_sma(predicted, actual, normal, 'AWND', axes[0, 2], up_to=limit)
+    display_variable_sma(predicted, actual, normal, 'AWND', axes[1, 2], window=7, up_to=limit)
+
+    plt.subplots_adjust(wspace=0.5, hspace=0.5)
+    plt.show()
     
     station = 0
     predicted_high_temps, actual_high_temps = get_above_average_days(predicted[f'TAVG_{station}'], actual[f'TAVG_{station}'], normal[f'TAVG_{station}'])
