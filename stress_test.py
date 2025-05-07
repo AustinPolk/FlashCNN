@@ -17,39 +17,27 @@ def get_forecasted_period_from_tensors(model, t, dl, forecast_start, forecast_le
     
     return actual_features
 
-if __name__ == '__main__':
-    
-    parser = ArgumentParser()
-    parser.add_argument("-m", "--model_path", type=str, required=True, help = "model checkpoint path")
-    parser.add_argument("-n", "--model_name", type=str, required=True, help = "model name")
-    parser.add_argument("-w", "--weeks", type=int, required=True, help = "weeks forward to forecast")
-    parser.add_argument("--start_date", type=str, required=True, help = "testing start date")
-    parser.add_argument("--end_date", type=str, required=True, help = "testing end date")
-    parser.add_argument("--historical_data", type=str, required=True, help = "historical data filepath")
-    parser.add_argument("--normals_data", type=str, required=True, help = "daily normals data filepath")
-    parser.add_argument("--output_dir", type=str, required=True, help = "stress test results output directory")
-    args = parser.parse_args()
-    
-    with open(args.model_path, 'rb') as model_file:
+def run_stress_test(model_path, model_name, weeks, start_date, end_date, historical_data, normals_data, output_dir):
+    with open(model_path, 'rb') as model_file:
         model = pickle.load(model_file)
     
     model.eval()
     
-    historical = pd.read_csv(args.historical_data)
-    normals = pd.read_csv(args.normals_data)
+    historical = pd.read_csv(historical_data)
+    normals = pd.read_csv(normals_data)
     normals.index = normals['DAY'].values
 
     t, dl = create_tensors(historical, normals)
     t = t.float()
 
-    all_dates = pd.date_range(start=args.start_date, end=args.end_date)
+    all_dates = pd.date_range(start=start_date, end=end_date)
 
     prcp_errors = []
     tavg_errors = []
     awnd_errors = []
     
     for starting_date in tqdm(all_dates):
-        days = 7 * args.weeks
+        days = 7 * weeks
         forecast, _ = create_forecast(model, historical, normals, str(starting_date.date()), days, False)
         actual_observations = get_forecasted_period_from_tensors(model, t, dl, str(starting_date.date()), days)
 
@@ -89,15 +77,37 @@ if __name__ == '__main__':
 
     all_prcp_errors_df = pd.concat(prcp_errors, ignore_index=True)
     all_prcp_errors_df.insert(0, 'FORECAST_START', all_dates)
-    save_path = os.path.join(args.output_dir, f'{args.model_name}_PRCP_error.csv')
+    save_path = os.path.join(output_dir, f'{model_name}_PRCP_error.csv')
     all_prcp_errors_df.to_csv(save_path, index=False)
     
     all_tavg_errors_df = pd.concat(tavg_errors, ignore_index=True)
     all_tavg_errors_df.insert(0, 'FORECAST_START', all_dates)
-    save_path = os.path.join(args.output_dir, f'{args.model_name}_TAVG_error.csv')
+    save_path = os.path.join(output_dir, f'{model_name}_TAVG_error.csv')
     all_tavg_errors_df.to_csv(save_path, index=False)
     
     all_awnd_errors_df = pd.concat(awnd_errors, ignore_index=True)
     all_awnd_errors_df.insert(0, 'FORECAST_START', all_dates)
-    save_path = os.path.join(args.output_dir, f'{args.model_name}_AWND_error.csv')
+    save_path = os.path.join(output_dir, f'{model_name}_AWND_error.csv')
     all_awnd_errors_df.to_csv(save_path, index=False)
+
+if __name__ == '__main__':
+    
+    parser = ArgumentParser()
+    parser.add_argument("-m", "--model_path", type=str, required=True, help = "model checkpoint path")
+    parser.add_argument("-n", "--model_name", type=str, required=True, help = "model name")
+    parser.add_argument("-w", "--weeks", type=int, required=True, help = "weeks forward to forecast")
+    parser.add_argument("--start_date", type=str, required=True, help = "testing start date")
+    parser.add_argument("--end_date", type=str, required=True, help = "testing end date")
+    parser.add_argument("--historical_data", type=str, required=True, help = "historical data filepath")
+    parser.add_argument("--normals_data", type=str, required=True, help = "daily normals data filepath")
+    parser.add_argument("--output_dir", type=str, required=True, help = "stress test results output directory")
+    args = parser.parse_args()
+
+    run_stress_test(args.model_path,
+                    args.model_name,
+                    args.weeks,
+                    args.start_date,
+                    args.end_date,
+                    args.historical_data,
+                    args.normals_data,
+                    args.output_dir)
