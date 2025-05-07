@@ -191,15 +191,25 @@ if __name__ == '__main__':
     predicted_high_temps, actual_high_temps = get_above_average_days(predicted[f'TAVG_{station}'], actual[f'TAVG_{station}'], normal[f'TAVG_{station}'])
     predicted_high_winds, actual_high_winds = get_above_average_days(predicted[f'AWND_{station}'], actual[f'AWND_{station}'], normal[f'AWND_{station}'])
 
+    stats_limit = 112
     print('High Temp Stats:')
     calculate_stats(predicted_high_temps, actual_high_temps)
     display_confusion_matrix(predicted_high_temps, actual_high_temps)
+    print(f'High Temp Stats (first {stats_limit} days):')
+    calculate_stats(predicted_high_temps[:stats_limit], actual_high_temps[:stats_limit])
+    display_confusion_matrix(predicted_high_temps[:stats_limit], actual_high_temps[:stats_limit])
     print('High Wind Stats:')
     calculate_stats(predicted_high_winds, actual_high_winds)
     display_confusion_matrix(predicted_high_winds, actual_high_winds)
+    print(f'High Wind Stats (first {stats_limit} days):')
+    calculate_stats(predicted_high_winds[:stats_limit], actual_high_winds[:stats_limit])
+    display_confusion_matrix(predicted_high_winds[:stats_limit], actual_high_winds[:stats_limit])
 
     predicted_risk_labels, actual_risk_labels = period_by_period_risk(predicted, actual, normal, 0, periods=64, risk_labels=2)
 
     print('High Risk Stats:')
     calculate_risk2_stats(predicted_risk_labels, actual_risk_labels)
     display_risk2_confusion_matrix(predicted_risk_labels, actual_risk_labels)
+    print(f'High Risk Stats (first {stats_limit//7} weeks):')
+    calculate_risk2_stats(predicted_risk_labels[:stats_limit//7], actual_risk_labels[:stats_limit//7])
+    display_risk2_confusion_matrix(predicted_risk_labels[:stats_limit//7], actual_risk_labels[:stats_limit//7])
