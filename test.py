@@ -26,7 +26,8 @@ def assess_risk(total_degrees, normal_degrees, total_winds, normal_winds, total_
     risk_score = 0
 
     # heat and wind increase the risk
-    risk_score += (total_degrees / normal_degrees + total_winds / normal_winds) / 2
+    risk_score += total_degrees / normal_degrees 
+    risk_score += total_winds / normal_winds
     
     # rain decreases the risk
     risk_score -= total_rainfall / normal_rainfall
@@ -110,7 +111,7 @@ def calculate_stats(predicted, actual):
             false_neg += 1
         else:
             true_neg += 1
-    
+
     accuracy = (true_pos + true_neg) / (true_pos + true_neg + false_pos + false_neg)
     precision = (true_pos) / (true_pos + false_pos)
     recall = (true_pos) / (true_pos + false_neg)
