@@ -93,17 +93,17 @@ def classification_test(model_path, model_name, weeks, start_date, end_date, his
         forecast_PRCP_classifications = get_period_classifications(PRCP_forecast, PRCP_normal, 7, margin=margin)
         observations_PRCP_classifications = get_period_classifications(PRCP_observations, PRCP_normal, 7, margin=margin)
         forecast_prcp_classifications.append(forecast_PRCP_classifications)
-        observations_prcp_classifications.append(forecast_PRCP_classifications)
+        observations_prcp_classifications.append(observations_PRCP_classifications)
         
         forecast_TAVG_classifications = get_period_classifications(TAVG_forecast, TAVG_normal, 7, margin=margin)
         observations_TAVG_classifications = get_period_classifications(TAVG_observations, TAVG_normal, 7, margin=margin)
         forecast_tavg_classifications.append(forecast_TAVG_classifications)
-        observations_tavg_classifications.append(forecast_TAVG_classifications)
+        observations_tavg_classifications.append(observations_TAVG_classifications)
 
         forecast_AWND_classifications = get_period_classifications(AWND_forecast, AWND_normal, 7, margin=margin)
         observations_AWND_classifications = get_period_classifications(AWND_observations, AWND_normal, 7, margin=margin)
         forecast_awnd_classifications.append(forecast_AWND_classifications)
-        observations_awnd_classifications.append(forecast_AWND_classifications)
+        observations_awnd_classifications.append(observations_AWND_classifications)
 
     forecast_prcp_classifications = pd.DataFrame(forecast_prcp_classifications)
     forecast_prcp_classifications.insert(0, 'FORECAST_START', all_dates)
