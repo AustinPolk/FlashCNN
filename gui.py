@@ -12,9 +12,16 @@ def store_filepath_in_entry(entry):
     if file_path:
         entry.insert(0, file_path)
         
+def store_directory_in_entry(entry):
+    file_path = filedialog.askdirectory(
+        mustexist=True
+    )
+    if file_path:
+        entry.insert(0, file_path)
+        
 def start(window, entries, labels, progress_bars):
-    
-    historical_path 
+    pass
+    '''historical_path 
     
     
     progress_bar["value"] = 0  # Reset
@@ -22,7 +29,7 @@ def start(window, entries, labels, progress_bars):
     for i in range(101):
         progress_bar["value"] = i
         window.update_idletasks()
-        window.after(20)  # Small delay to simulate work
+        window.after(20)  # Small delay to simulate work'''
 
 if __name__ == '__main__':
 
@@ -50,6 +57,11 @@ if __name__ == '__main__':
     Label(main_window, text='Parameters:').grid(row=app_row, columnspan=3)
     
     app_row += 1
+    Label(main_window, text='Convolutional Layers:').grid(row=app_row, sticky='w')
+    convolutional_layers_entry = Entry(main_window, width=50)
+    convolutional_layers_entry.grid(row=app_row, column=1, sticky='w')
+    
+    app_row += 1
     Label(main_window, text='Lookback:').grid(row=app_row, sticky='w')
     lookback_entry = Entry(main_window, width=50)
     lookback_entry.grid(row=app_row, column=1, sticky='w')
@@ -66,6 +78,13 @@ if __name__ == '__main__':
     Label(main_window, text='ID:').grid(row=app_row, sticky='w')
     model_id_entry = Entry(main_window, width=50)
     model_id_entry.grid(row=app_row, column=1, sticky='w')
+    
+    app_row += 1
+    Label(main_window, text='Results Directory:').grid(row=app_row, sticky='w')
+    results_dir_entry = Entry(main_window, width=50)
+    results_dir_entry.grid(row=app_row, column=1, sticky='w')
+    results_dir_button = Button(main_window, text='...', command=partial(store_directory_in_entry, results_dir_entry))
+    results_dir_button.grid(row=app_row, column=2)
     
     app_row += 1
     Label(main_window, text='Training Epochs:').grid(row=app_row, sticky='w')
@@ -113,9 +132,11 @@ if __name__ == '__main__':
     all_entries = {
         'Historical': historical_entry, 
         'Normal': normal_entry, 
+        'Convolutional Layers': convolutional_layers_entry,
         'Lookback': lookback_entry, 
         'Kernel Size': kernel_size_entry, 
         'ID': model_id_entry,
+        'Results Directory': results_dir_entry,
         'Training Epochs': epochs_entry,
     }
     all_output_labels = {
