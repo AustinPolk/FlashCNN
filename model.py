@@ -29,7 +29,8 @@ class FlashModel(nn.Module):
         network.add_module('Conv1', nn.Conv2d(in_channels=self.channels, out_channels=2*self.channel_multiplier*c, kernel_size=(1, self.input_features)))
         c, h, w = 2*self.channel_multiplier*c, h, 1
         print(c, h, w)
-    
+
+        # additional convolutional layers + ReLU + pooling as demanded by the user
         for i in range(self.convolutional_layers):
             network.add_module(f'Conv{i + 2}', nn.Conv2d(in_channels=c, out_channels=self.channel_multiplier*c, kernel_size=(self.kernel_size, 1)))
             c, h = self.channel_multiplier*c, h - self.kernel_size + 1
