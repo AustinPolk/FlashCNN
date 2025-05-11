@@ -3,7 +3,7 @@ from torch import nn
 import numpy as np
 
 class FlashModel(nn.Module):
-    def __init__(self, input_shape, output_shape, stations, k=5, dropout=0.2, sigmoid_output=False):
+    def __init__(self, input_shape, output_shape, stations, k=5, dropout=0.2, sigmoid_output=False, convolutional_layers=2):
         super(FlashModel, self).__init__()
         
         self.channels = input_shape[0]
@@ -14,6 +14,7 @@ class FlashModel(nn.Module):
         self.dropout_rate = dropout
         self.stations = stations
         self.sigmoid_output = sigmoid_output
+        self.convolutional_layers = convolutional_layers
         self.variables_per_station = 6
         self._check_viability()
         self.network = self._create_network()
@@ -23,14 +24,11 @@ class FlashModel(nn.Module):
         print(c, h, w)
         c, h, w = 4*c, h, 1
         print(c, h, w)
-        c, h = 2*c, h - self.kernel_size + 1
-        print(c, h, w)
-        h = h / 2
-        print(c, h, w)
-        c, h = 2*c, h - self.kernel_size + 1
-        print(c, h, w)
-        h = h / 2
-        print(c, h, w)
+        for i in range(self.convolutional_layers):
+            c, h = 2*c, h - self.kernel_size + 1
+            print(c, h, w)
+            h = h / 2
+            print(c, h, w)
         t = c * h * w
         print(t)
 
@@ -48,24 +46,15 @@ class FlashModel(nn.Module):
         c, h, w = 4*c, h, 1
         print(c, h, w)
     
-        network.add_module('Conv2', nn.Conv2d(in_channels=4*self.channels, out_channels=8*self.channels, kernel_size=(self.kernel_size, 1)))
-        c, h = 2*c, h - self.kernel_size + 1
-        print(c, h, w)
-        
-        network.add_module('ReLU1', nn.ReLU())
-        network.add_module('MaxPool1', nn.MaxPool2d(kernel_size=(2,1), stride=2))
-        h = h // 2
-        print(c, h, w)
-        
-        # next layer, same thing.
-        network.add_module('Conv3', nn.Conv2d(in_channels=8*self.channels, out_channels=16*self.channels, kernel_size=(self.kernel_size, 1)))
-        c, h = 2*c, h - self.kernel_size + 1
-        print(c, h, w)
-        
-        network.add_module('ReLU2', nn.ReLU())
-        network.add_module('MaxPool2', nn.MaxPool2d(kernel_size=(2,1), stride=2))
-        h = h // 2
-        print(c, h, w)
+        for i in range(self.convolutional_layers):
+            network.add_module(f'Conv{i + 2}', nn.Conv2d(in_channels=4*self.channels, out_channels=8*self.channels, kernel_size=(self.kernel_size, 1)))
+            c, h = 2*c, h - self.kernel_size + 1
+            print(c, h, w)
+            
+            network.add_module(f'ReLU{i+1}', nn.ReLU())
+            network.add_module(f'MaxPool{i+1}', nn.MaxPool2d(kernel_size=(2,1), stride=2))
+            h = h // 2
+            print(c, h, w)
         
         # then flatten everything into a single dimension and apply dropout
         network.add_module('Flatten', nn.Flatten())
@@ -74,11 +63,11 @@ class FlashModel(nn.Module):
         network.add_module('Dropout', nn.Dropout(self.dropout_rate))
         
         # fully connected layers to produce a new set of features
-        network.add_module('FC1', nn.Linear(int(c*h*w), 512))
-        network.add_module('ReLU3', nn.ReLU())
-        network.add_module('FC2', nn.Linear(512, 128))
-        network.add_module('ReLU4', nn.ReLU())
-        network.add_module('FC3', nn.Linear(128, self.output_features))
+        network.add_module('FC1', nn.Linear(int(c*h*w), 512 + self.output_features))
+        network.add_module('ReLUFC1', nn.ReLU())
+        network.add_module('FC2', nn.Linear(512 + self.output_features, 128 + self.output_features))
+        network.add_module('ReLUFC2', nn.ReLU())
+        network.add_module('FC3', nn.Linear(128 + self.output_features, self.output_features))
     
         return network
     def forward(self, x):
