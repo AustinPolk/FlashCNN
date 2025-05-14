@@ -1,5 +1,8 @@
 from torch import nn
 import numpy as np
+from argparse import ArgumentParser
+import json
+import pickle
 
 class FlashModelConfig:
     def __init__(self, **kwargs: dict):
@@ -104,3 +107,18 @@ class FlashModel(nn.Module):
 
     def forward(self, x):
         return self.model(x)        
+    
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('-j', '--json_path', required=True, help='Path to JSON config file for model')
+    parser.add_argument('-m', '--model_path', required=True, help='Path to output file for model')
+    args = parser.parse_args()
+
+    with open(args.json_path, 'r') as file:
+        loaded_config = json.load(file)
+
+    config = FlashModelConfig(loaded_config)
+    model = FlashModel(config)
+
+    with open(args.model_path, 'wb+') as file:
+        pickle.dump(model, file)
