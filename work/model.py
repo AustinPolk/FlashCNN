@@ -5,7 +5,7 @@ import json
 import pickle
 
 class FlashModelConfig:
-    def __init__(self, **kwargs: dict):
+    def __init__(self, **kwargs):
         self.model_name: str = kwargs['model_name'] if 'model_name' in kwargs else None 
         self.input_station_count: int = kwargs['input_station_count'] if 'input_station_count' in kwargs else None
         self.output_station_count: int = kwargs['output_station_count'] if 'output_station_count' in kwargs else None
@@ -19,12 +19,12 @@ class FlashModelConfig:
         self.interlayer_channel_multiplier: int = kwargs['interlayer_channel_multiplier'] if 'interlayer_channel_multiplier' in kwargs else None
         self.convolutional_layer_count: int = kwargs['convolutional_layer_count'] if 'convolutional_layer_count' in kwargs else None
         self.dropout_rate: float = kwargs['dropout_rate'] if 'dropout_rate' in kwargs else None
-        self.use_normal_channel: bool = kwargs['use_normal_channel'] if 'use_normal_channel' in kwargs else None
-        self.use_normal_difference_channel: bool = kwargs['use_normal_difference_channel'] if 'use_normal_difference_channel' in kwargs else None
-        self.use_normal_difference2_channel: bool = kwargs['use_normal_difference2_channel'] if 'use_normal_difference2_channel' in kwargs else None
+        self.input_channel_count: int = kwargs['input_channel_count'] if 'input_channel_count' in kwargs else None
         self.fully_connected_activation: str = kwargs['fully_connected_activation'] if 'fully_connected_activation' in kwargs else None
         self.use_average_pooling: bool = kwargs['use_average_pooling'] if 'use_average_pooling' in kwargs else None
         self.fully_connected_layer_sizes: list = kwargs['fully_connected_layer_sizes'] if 'fully_connected_layer_sizes' in kwargs else None
+        self.use_day_of_period_feature: bool = kwargs['use_day_of_period_feature'] if 'use_day_of_period_feature' in kwargs else None
+        self.periods_in_use: bool = kwargs['periods_in_use'] if 'periods_in_use' in kwargs else None
 
 def default_config():
     return FlashModelConfig(
@@ -41,12 +41,12 @@ def default_config():
         interlayer_channel_multiplier = 2,
         convolutional_layer_count = 2,
         dropout_rate = 0.2,
-        use_normal_channel = True,
-        use_normal_difference_channel = True,
-        use_normal_difference2_channel = True,
+        input_channel_count = 1,
         fully_connected_activation = 'ReLU',
         use_average_pooling = False,
-        fully_connected_layer_sizes = [512, 128]
+        fully_connected_layer_sizes = [512, 128],
+        use_day_of_period_feature = True,
+        periods_in_use = 1,
     )
 
 class FlashModel(nn.Module):
@@ -68,11 +68,7 @@ class FlashModel(nn.Module):
             raise ArithmeticError('Current model configuration results in non-integer parameters for model')
 
         layers = []
-
-        channels = (1 + (1 if self.config.use_normal_channel else 0)
-                    + (1 if self.config.use_normal_difference_channel else 0)
-                    + (1 if self.config.use_normal_difference2_channel else 0))
-        c, cc, h, w = channels, 2*channels*self.config.interlayer_channel_multiplier, self.config.lookback_days, self.config.input_station_count * self.config.input_variables_per_station
+        c, cc, h, w = self.config.input_channel_count, 2*self.config.input_channel_count*self.config.interlayer_channel_multiplier, self.config.lookback_days, self.config.input_station_count*self.config.input_variables_per_station + (self.config.periods_in_use if self.config.use_day_of_period_feature else 0)
 
         layers.append(nn.Conv2d(in_channels=c, out_channels=cc, kernel_size=(1, w)))
         c, cc, h, w = cc, cc*self.config.interlayer_channel_multiplier, h, 1
@@ -103,6 +99,8 @@ class FlashModel(nn.Module):
 
         layers.append(nn.Linear(previous_layer_size, self.config.output_station_count*self.config.output_variables_per_station*self.config.lookahead_days))
 
+        layers.append(nn.Unflatten(1, (self.config.lookahead_days, self.config.output_station_count*self.config.output_variables_per_station)))
+
         self.model = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -110,14 +108,14 @@ class FlashModel(nn.Module):
     
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('-j', '--json_path', required=True, help='Path to JSON config file for model')
-    parser.add_argument('-m', '--model_path', required=True, help='Path to output file for model')
+    parser.add_argument('-c', '--config_path', type=str, required=True, help='Path to JSON config file for model')
+    parser.add_argument('-m', '--model_path', type=str, required=True, help='Path to output file for model')
     args = parser.parse_args()
 
-    with open(args.json_path, 'r') as file:
+    with open(args.config_path, 'r') as file:
         loaded_config = json.load(file)
 
-    config = FlashModelConfig(loaded_config)
+    config = FlashModelConfig(**loaded_config)
     model = FlashModel(config)
 
     with open(args.model_path, 'wb+') as file:
