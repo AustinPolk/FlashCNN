@@ -37,30 +37,28 @@ class FlashPreprocessor:
         historical_df = historical_df.ffill().fillna(0.0)
 
         # add year and day of the year column
-        historical_df.insert(0, 'YEAR', pd.to_datetime(historical_df.index).year)
-        historical_df.insert(1, 'DAY_OF_YEAR', pd.to_datetime(historical_df.index).day_of_year)
+        #historical_df.insert(0, 'YEAR', pd.to_datetime(historical_df.index).year)
+        #historical_df.insert(1, 'DAY_OF_YEAR', pd.to_datetime(historical_df.index).day_of_year)
 
         self.preprocessed = historical_df
 
     def __getitem__(self, idx):
         if isinstance(idx, int) or (isinstance(idx, slice) and isinstance(idx.start, int)):
             return self.preprocessed.iloc[idx]
-        if isinstance(idx, str) or (isinstance(idx, slice) and isinstance(idx.start, str)):
-            return self.preprocessed.loc[idx]
-        return self.preprocessed[idx]
+        return self.preprocessed.loc[idx]
 
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-c', '--config_path', type=str, required=True, help='Path to JSON config file for model')
     parser.add_argument('-r', '--raw_path', type=str, required=True, help='Path to raw data file')
-    parser.add_argument('-p', '--preprocessor_path', type=str, required=True, help='Output path for initialized preprocessor')
+    parser.add_argument('-o', '--output_path', type=str, required=True, help='Output path for initialized preprocessor')
     args = parser.parse_args()
 
     with open(args.config_path, 'r') as file:
         loaded_config = json.load(file)
 
     config = FlashPreprocessorConfig(**loaded_config)
-    model = FlashPreprocessor(config, args.raw_path)
+    p = FlashPreprocessor(config, args.raw_path)
 
-    with open(args.preprocessor_path, 'wb+') as file:
-        pickle.dump(model, file)
+    with open(args.output_path, 'wb+') as file:
+        pickle.dump(p, file)

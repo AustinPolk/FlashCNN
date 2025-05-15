@@ -109,7 +109,7 @@ class FlashModel(nn.Module):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-c', '--config_path', type=str, required=True, help='Path to JSON config file for model')
-    parser.add_argument('-m', '--model_path', type=str, required=True, help='Path to output file for model')
+    parser.add_argument('-o', '--output_path', type=str, required=True, help='Path to output file for model')
     args = parser.parse_args()
 
     with open(args.config_path, 'r') as file:
@@ -118,5 +118,5 @@ if __name__ == '__main__':
     config = FlashModelConfig(**loaded_config)
     model = FlashModel(config)
 
-    with open(args.model_path, 'wb+') as file:
+    with open(args.output_path, 'wb+') as file:
         pickle.dump(model, file)
