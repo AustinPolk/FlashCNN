@@ -17,6 +17,7 @@ class FlashPreprocessor:
     def _initialize(self, historical_filepath: str):
         historical_df = pd.read_csv(historical_filepath)
 
+        historical_df['DATE'] = pd.to_datetime(historical_df['DATE'])
         historical_df.set_index('DATE', inplace=True)
 
         # trim the dataframe to only have the specified stations and variables
@@ -46,6 +47,9 @@ class FlashPreprocessor:
         if isinstance(idx, int) or (isinstance(idx, slice) and isinstance(idx.start, int)):
             return self.preprocessed.iloc[idx]
         return self.preprocessed.loc[idx]
+    def get_for_date_range(self, start_date, end_date, lag=0):
+        start_datetime = pd.to_datetime(start_date) - pd.Timedelta(days=lag)
+        end_datetime = pd.to_datetime(end_date) - pd.Timedelta(days=lag)
 
 if __name__ == '__main__':
     parser = ArgumentParser()

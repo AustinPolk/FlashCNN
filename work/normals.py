@@ -12,19 +12,20 @@ class FlashNormalsConfig:
     def __init__(self, **kwargs):
         self.start_date = kwargs['start_date'] if 'start_date' in kwargs else None
         self.end_date = kwargs['end_date'] if 'end_date' in kwargs else None
-        self.period_lengths = kwargs['variable_scales'] if 'variable_scales' in kwargs else None
+        self.period_lengths = kwargs['period_lengths'] if 'period_lengths' in kwargs else None
 
 class FlashNormals:
     def __init__(self, config: FlashNormalsConfig, preprocessor: FlashPreprocessor):
         self.config = config
         self.reference = pd.to_datetime(self.config.start_date)
+        self.period_lengths = self.config.period_lengths
         self.normals = None
         self._initialize(preprocessor)
     def _initialize(self, preprocessor: FlashPreprocessor):
         sample = preprocessor[self.config.start_date:self.config.end_date]
 
         self.normals = {}
-        for period_length in self.config.period_lengths:
+        for period_length in self.period_lengths:
             sample.insert(0, 'DAY', sample.index.apply(lambda x: convert_to_day_of_period(x, self.reference, period_length)))
             grouped = sample.groupby('DAY')
             means = grouped.mean()
@@ -41,9 +42,9 @@ class FlashNormals:
     def get_for_date(self, normal_type, period_length, date):
         day_of_period = convert_to_day_of_period(pd.to_datetime(date), self.reference, period_length)
         return self.get(normal_type, period_length, day_of_period)
-    def get_for_date_range(self, normal_type, period_length, start_date, end_date):
-        start_datetime = pd.to_datetime(start_date)
-        end_datetime = pd.to_datetime(end_date)
+    def get_for_date_range(self, normal_type, period_length, start_date, end_date, lag=0):
+        start_datetime = pd.to_datetime(start_date) - pd.Timedelta(days=lag)
+        end_datetime = pd.to_datetime(end_date) - pd.Timedelta(days=lag)
 
         all_normals = []
         days_between = (end_datetime - start_datetime).days

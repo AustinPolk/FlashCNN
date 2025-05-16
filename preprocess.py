@@ -109,3 +109,5 @@ if __name__ == '__main__':
     normals = limited.groupby('DAY').agg(['mean', 'std', 'max', 'min'])
     normals.columns = ['_'.join(col) for col in normals.columns]
     normals.to_csv(args.normal_path)
+
+    
