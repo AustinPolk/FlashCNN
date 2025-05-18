@@ -23,8 +23,7 @@ class FlashModelConfig:
         self.fully_connected_activation: str = kwargs['fully_connected_activation'] if 'fully_connected_activation' in kwargs else None
         self.use_average_pooling: bool = kwargs['use_average_pooling'] if 'use_average_pooling' in kwargs else None
         self.fully_connected_layer_sizes: list = kwargs['fully_connected_layer_sizes'] if 'fully_connected_layer_sizes' in kwargs else None
-        self.use_day_of_period_feature: bool = kwargs['use_day_of_period_feature'] if 'use_day_of_period_feature' in kwargs else None
-        self.periods_in_use: bool = kwargs['periods_in_use'] if 'periods_in_use' in kwargs else None
+        self.extra_features: bool = kwargs['extra_features'] if 'extra_features' in kwargs else None
 
 def default_config():
     return FlashModelConfig(
@@ -45,8 +44,7 @@ def default_config():
         fully_connected_activation = 'ReLU',
         use_average_pooling = False,
         fully_connected_layer_sizes = [512, 128],
-        use_day_of_period_feature = True,
-        periods_in_use = 1,
+        extra_features = 1
     )
 
 class FlashModel(nn.Module):
@@ -68,7 +66,7 @@ class FlashModel(nn.Module):
             raise ArithmeticError('Current model configuration results in non-integer parameters for model')
 
         layers = []
-        c, cc, h, w = self.config.input_channel_count, 2*self.config.input_channel_count*self.config.interlayer_channel_multiplier, self.config.lookback_days, self.config.input_station_count*self.config.input_variables_per_station + (self.config.periods_in_use if self.config.use_day_of_period_feature else 0)
+        c, cc, h, w = self.config.input_channel_count, 2*self.config.input_channel_count*self.config.interlayer_channel_multiplier, self.config.lookback_days, self.config.input_station_count*self.config.input_variables_per_station + self.config.extra_features
 
         layers.append(nn.Conv2d(in_channels=c, out_channels=cc, kernel_size=(1, w)))
         c, cc, h, w = cc, cc*self.config.interlayer_channel_multiplier, h, 1

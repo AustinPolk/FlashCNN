@@ -24,9 +24,13 @@ class FlashFeatureCreator:
         self.config = config
         self.preprocessor = preprocessor
         self.normals = normals
+    def create_for_date(self, date):
+        historical = self.preprocessor.get_for_date(date)
+
     def create_from_date_range(self, start_date, end_date):
         # start with plain historical data
-        historical = self.preprocessor[start_date:end_date]
+        historical = self.preprocessor.get_for_date_range(start_date, end_date)
+        dates = historical.index
 
         # create a tensor with size (1, H, W), where H is the number of days in the range and W is the number of station variables
         feature_tensor = torch.from_numpy(historical.values).float().unsqueeze(0)

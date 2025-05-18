@@ -47,9 +47,12 @@ class FlashPreprocessor:
         if isinstance(idx, int) or (isinstance(idx, slice) and isinstance(idx.start, int)):
             return self.preprocessed.iloc[idx]
         return self.preprocessed.loc[idx]
+    def get_for_date(self, date):
+        return self.preprocessed.loc[date]
     def get_for_date_range(self, start_date, end_date, lag=0):
         start_datetime = pd.to_datetime(start_date) - pd.Timedelta(days=lag)
         end_datetime = pd.to_datetime(end_date) - pd.Timedelta(days=lag)
+        return self.preprocessed.loc[start_datetime:end_datetime]
 
 if __name__ == '__main__':
     parser = ArgumentParser()
