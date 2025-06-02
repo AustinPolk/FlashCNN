@@ -1,7 +1,4 @@
-import torch
 from torch import nn
-import numpy as np
-import pandas as pd
 
 # a single FlashCNN module that models the weather at one specific "point" (station, grid cell, etc.)
 class FlashPoint(nn.Module):

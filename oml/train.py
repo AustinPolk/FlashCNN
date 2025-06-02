@@ -37,12 +37,16 @@ def create_datasets(tensor: torch.Tensor, lookback: int, lookahead: int):
     
     return torch.stack(X, dim=0), torch.stack(Y, dim=0)
 
-def train(model: FlashPoint, train: tuple, validate: tuple, learning_rate=0.001, batch_size=8, epochs=100):
+def split(X: torch.Tensor, Y: torch.Tensor, date_lookup: dict, training_start: str, training_end: str, validation_start: str, validation_end: str):
+    return ((X[date_lookup[training_start]:date_lookup[training_end]], X[date_lookup[validation_start]:date_lookup[validation_end]]),
+            (Y[date_lookup[training_start]:date_lookup[training_end]], Y[date_lookup[validation_start]:date_lookup[validation_end]]))
+
+def train(model: FlashPoint, training: tuple, validation: tuple, learning_rate=0.001, batch_size=8, epochs=100):
     loss_fn = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    train_X, train_Y = train
-    val_X, val_Y = validate
+    train_X, train_Y = training
+    val_X, val_Y = validation
 
     dataset = Data.TensorDataset(train_X, train_Y)
     loader = Data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
