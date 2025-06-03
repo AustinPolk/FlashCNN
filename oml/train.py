@@ -20,7 +20,10 @@ def create_tensors(from_data: pd.DataFrame, variables: list):
 
     return station_tensors, station_dates
 
-def create_datasets(tensor: torch.Tensor, lookback: int, lookahead: int):
+def create_datasets(tensor: torch.Tensor, for_model: FlashPoint):
+    lookback = for_model.input_length
+    lookahead = for_model.output_length
+    
     first_idx = lookback + 1
     last_idx = tensor.size()[1] - lookahead - 1
     

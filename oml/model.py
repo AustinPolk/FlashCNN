@@ -21,11 +21,13 @@ class FlashPoint(nn.Module):
             self.params['switch'] = True
         if 'h' not in self.params:
             self.params['h'] = 256
+        if 'l' not in self.params:
+            self.params['l'] = 1
         
-        self.convolutional, output_size = self._create_convolutional(self.params['k'], self.params['p'], self.params['z'], self.params['switch'])
+        self.convolutional, output_size = self._create_convolutional(self.params['k'], self.params['p'], self.params['z'], self.params['switch'], self.params['l'])
         self.fully_connected = self._create_fully_connected(output_size, self.params['h'])
     
-    def _create_convolutional(self, k, p, z, switch):
+    def _create_convolutional(self, k, p, z, switch, l):
         network = nn.Sequential()
     
         c, cc, h, w = 1, z, self.input_length, self.input_features
@@ -47,10 +49,11 @@ class FlashPoint(nn.Module):
             network.add_module(f'MaxPool2', nn.MaxPool2d(kernel_size=(p, 1), stride=p))
             c, cc, h, w = 2*cc, 4*cc, (h - k + 1)//p, 1
 
-        network.add_module(f'Conv3', nn.Conv2d(in_channels=c, out_channels=cc, kernel_size=(k, 1)))
-        network.add_module(f'ReLU3', nn.ReLU())
-        network.add_module(f'MaxPool3', nn.MaxPool2d(kernel_size=(p, 1), stride=p))
-        c, cc, h = cc, 2*cc, (h - k + 1)//p
+        for idx in range(l):
+            network.add_module(f'Conv{3+idx}', nn.Conv2d(in_channels=c, out_channels=cc, kernel_size=(k, 1)))
+            network.add_module(f'ReLU{3+idx}', nn.ReLU())
+            network.add_module(f'MaxPool{3+idx}', nn.MaxPool2d(kernel_size=(p, 1), stride=p))
+            c, cc, h = cc, 2*cc, (h - k + 1)//p
 
         # flatten output and apply dropout
         network.add_module('Flatten', nn.Flatten())
