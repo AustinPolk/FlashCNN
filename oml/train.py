@@ -1,36 +1,37 @@
 import pandas as pd
 import torch
-from oml.model import FlashPoint
+from model import FlashPoint
 from torch import nn, optim
 import numpy as np
 import torch.utils.data as Data
 
 def create_tensors(from_data: pd.DataFrame, variables: list):
-    date_lookup = {}
-    index = from_data['DATE']
-    for i in range(len(index)):
-        date_lookup[index[i]] = i
-
     stations = from_data['STATION'].unique()
     station_tensors = {}
+    station_dates = {}
     for station in stations:
         station_specific = from_data[from_data['STATION'] == station]
-        station_tensors[station] = torch.from_numpy(station_specific[variables].values)
+        date_lookup = {}
+        index = pd.to_datetime(station_specific['DATE']).dt.strftime('%Y-%m-%d')
+        for i in range(len(index)):
+            date_lookup[index.iloc[i]] = i
+        station_dates[station] = date_lookup
+        station_tensors[station] = torch.from_numpy(station_specific[variables].values).float().unsqueeze(0)
 
-    return station_tensors, date_lookup
+    return station_tensors, station_dates
 
 def create_datasets(tensor: torch.Tensor, lookback: int, lookahead: int):
     first_idx = lookback + 1
-    last_idx = tensor.size()[0] - lookahead - 1
+    last_idx = tensor.size()[1] - lookahead - 1
     
     X = []
     Y = []
 
     for idx in range(first_idx, last_idx, 1):
-        b1, b2 = idx - lookback, idx - 1
-        input_features = tensor[b1:b2]
-        a1, a2 = idx, idx + lookahead - 1
-        output_features = tensor[a1:a2]
+        b1, b2 = idx - lookback - 1, idx - 1
+        input_features = tensor[:, b1:b2]
+        a1, a2 = idx, idx + lookahead
+        output_features = tensor[-1, a1:a2]
 
         X.append(input_features)
         Y.append(output_features)
@@ -38,8 +39,8 @@ def create_datasets(tensor: torch.Tensor, lookback: int, lookahead: int):
     return torch.stack(X, dim=0), torch.stack(Y, dim=0)
 
 def split(X: torch.Tensor, Y: torch.Tensor, date_lookup: dict, training_start: str, training_end: str, validation_start: str, validation_end: str):
-    return ((X[date_lookup[training_start]:date_lookup[training_end]], X[date_lookup[validation_start]:date_lookup[validation_end]]),
-            (Y[date_lookup[training_start]:date_lookup[training_end]], Y[date_lookup[validation_start]:date_lookup[validation_end]]))
+    return ((X[date_lookup[training_start]:date_lookup[training_end]], Y[date_lookup[training_start]:date_lookup[training_end]]),
+            (X[date_lookup[validation_start]:date_lookup[validation_end]], Y[date_lookup[validation_start]:date_lookup[validation_end]]))
 
 def train(model: FlashPoint, training: tuple, validation: tuple, learning_rate=0.001, batch_size=8, epochs=100):
     loss_fn = nn.MSELoss()
@@ -82,7 +83,7 @@ def train(model: FlashPoint, training: tuple, validation: tuple, learning_rate=0
             val_rmse = np.sqrt(loss_fn(Y_pred, val_Y))
             validation_losses[epoch] = np.square(val_rmse)
         
-        if (epoch + 1) % 5 == 0:
+        if True:#(epoch + 1) % 5 == 0:
             print("Epoch %d: train RMSE %.4f, val RMSE %.4f" % (epoch+1, train_rmse, val_rmse))
     
         if val_rmse < best_val_rmse:

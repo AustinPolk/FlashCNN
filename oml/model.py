@@ -2,15 +2,28 @@ from torch import nn
 
 # a single FlashCNN module that models the weather at one specific "point" (station, grid cell, etc.)
 class FlashPoint(nn.Module):
-    def __init__(self, num_variables, lookback, lookahead):
+    def __init__(self, num_variables, lookback, lookahead, **parameters):
         super(FlashPoint, self).__init__()
         
         self.input_length = lookback
         self.input_features = num_variables
         self.output_features = num_variables
         self.output_length = lookahead
-        self.convolutional, output_size = self._create_convolutional(5, 2, 8, True)
-        self.fully_connected = self._create_fully_connected(output_size, 256)
+        self.params = parameters
+        
+        if 'k' not in self.params:
+            self.params['k'] = 5
+        if 'p' not in self.params:
+            self.params['p'] = 2
+        if 'z' not in self.params:
+            self.params['z'] = 8
+        if 'switch' not in self.params:
+            self.params['switch'] = True
+        if 'h' not in self.params:
+            self.params['h'] = 256
+        
+        self.convolutional, output_size = self._create_convolutional(self.params['k'], self.params['p'], self.params['z'], self.params['switch'])
+        self.fully_connected = self._create_fully_connected(output_size, self.params['h'])
     
     def _create_convolutional(self, k, p, z, switch):
         network = nn.Sequential()
@@ -32,12 +45,12 @@ class FlashPoint(nn.Module):
             network.add_module(f'Conv2', nn.Conv2d(in_channels=c, out_channels=2*cc, kernel_size=(k, w)))
             network.add_module(f'ReLU2', nn.ReLU())
             network.add_module(f'MaxPool2', nn.MaxPool2d(kernel_size=(p, 1), stride=p))
-            c, cc, h, w = cc, 4*cc, (h - k + 1)//p, 1
+            c, cc, h, w = 2*cc, 4*cc, (h - k + 1)//p, 1
 
         network.add_module(f'Conv3', nn.Conv2d(in_channels=c, out_channels=cc, kernel_size=(k, 1)))
         network.add_module(f'ReLU3', nn.ReLU())
         network.add_module(f'MaxPool3', nn.MaxPool2d(kernel_size=(p, 1), stride=p))
-        c, cc, h = cc, 2*cc, (h - k + 1)//2
+        c, cc, h = cc, 2*cc, (h - k + 1)//p
 
         # flatten output and apply dropout
         network.add_module('Flatten', nn.Flatten())
@@ -66,8 +79,8 @@ class FlashPoint(nn.Module):
         y = self.fully_connected(conv)
         return y
     def copy(self):
-        m = FlashPoint(self.input_features, self.input_length, self.output_length)
-        m.load_state_dict(self.load_state_dict())
+        m = FlashPoint(self.input_features, self.input_length, self.output_length, **self.params)
+        m.load_state_dict(self.state_dict())
         return m
     def copy_from(self, other):
-        self.load_state_dict(other.load_state_dict())
+        self.load_state_dict(other.state_dict())
