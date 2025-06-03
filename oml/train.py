@@ -43,6 +43,11 @@ def create_datasets(tensor: torch.Tensor, for_model: FlashPoint):
     
     return torch.stack(X, dim=0), torch.stack(Y, dim=0)
 
+def create_station_datasets(from_data: pd.DataFrame, for_model: FlashPoint, station: str):
+    station_tensors, date_lookups = create_tensors(from_data, for_model)
+    X, Y = create_datasets(station_tensors[station], for_model)
+    return X, Y, date_lookups[station]
+
 def split(X: torch.Tensor, Y: torch.Tensor, date_lookup: dict, training_start: str, training_end: str, validation_start: str, validation_end: str):
     return ((X[date_lookup[training_start]:date_lookup[training_end]], Y[date_lookup[training_start]:date_lookup[training_end]]),
             (X[date_lookup[validation_start]:date_lookup[validation_end]], Y[date_lookup[validation_start]:date_lookup[validation_end]]))
@@ -97,7 +102,3 @@ def train(model: FlashPoint, training: tuple, validation: tuple, learning_rate=0
             checkpoint_model.copy_from(model)
 
     return checkpoint_model, training_losses, validation_losses
-
-    
-
-    
