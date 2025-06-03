@@ -2,12 +2,23 @@ from torch import nn
 
 # a single FlashCNN module that models the weather at one specific "point" (station, grid cell, etc.)
 class FlashPoint(nn.Module):
-    def __init__(self, num_variables, lookback, lookahead, **parameters):
+    def __init__(self, static_features, time_features, predictive_features, lookback, lookahead, **parameters):
         super(FlashPoint, self).__init__()
         
+        self.static_features = static_features
+        self.time_features = time_features
+        self.predictive_features = predictive_features
+
+        self.predictive_features_offset = 0
+        self.predictive_features_length = len(self.predictive_features)
+        self.time_features_offset = len(self.predictive_features)
+        self.time_features_length = len(self.time_features)
+        self.static_features_offset = len(self.predictive_features) + len(self.time_features) - 1
+        self.static_features_length = len(self.static_features)
+
         self.input_length = lookback
-        self.input_features = num_variables
-        self.output_features = num_variables
+        self.input_features = len(self.static_features) + len(self.time_features) + len(self.predictive_features)
+        self.output_features = len(self.predictive_features)
         self.output_length = lookahead
         self.params = parameters
         
@@ -82,7 +93,7 @@ class FlashPoint(nn.Module):
         y = self.fully_connected(conv)
         return y
     def copy(self):
-        m = FlashPoint(self.input_features, self.input_length, self.output_length, **self.params)
+        m = FlashPoint(self.static_features, self.time_features, self.predictive_features, self.input_length, self.output_length, **self.params)
         m.load_state_dict(self.state_dict())
         return m
     def copy_from(self, other):

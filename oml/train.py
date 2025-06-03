@@ -5,7 +5,9 @@ from torch import nn, optim
 import numpy as np
 import torch.utils.data as Data
 
-def create_tensors(from_data: pd.DataFrame, variables: list):
+def create_tensors(from_data: pd.DataFrame, for_model: FlashPoint):
+    # this ordering of the variables is important and needs to be assumed later on
+    variables = for_model.predictive_features + for_model.time_features + for_model.static_features
     stations = from_data['STATION'].unique()
     station_tensors = {}
     station_dates = {}
@@ -34,7 +36,7 @@ def create_datasets(tensor: torch.Tensor, for_model: FlashPoint):
         b1, b2 = idx - lookback - 1, idx - 1
         input_features = tensor[:, b1:b2]
         a1, a2 = idx, idx + lookahead
-        output_features = tensor[-1, a1:a2]
+        output_features = tensor[-1, a1:a2, :for_model.predictive_features_length]
 
         X.append(input_features)
         Y.append(output_features)
